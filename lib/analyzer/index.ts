@@ -1,5 +1,5 @@
 import * as Debug from "debug";
-import { DockerOptions } from "../docker";
+import { Docker, DockerOptions } from "../docker";
 import * as dockerFile from "../docker-file";
 import * as apkAnalyzer from "./apk-analyzer";
 import * as aptAnalyzer from "./apt-analyzer";
@@ -22,9 +22,24 @@ async function analyze(
     osReleaseDetector.detect(targetImage, dockerfileAnalysis, options),
   ]);
 
+  const pkgFilesNames = [
+    ...aptAnalyzer.APT_PKGFILES,
+    ...apkAnalyzer.APK_PKGFILES,
+  ];
+
+  const docker = new Docker(targetImage, options);
+  let pkgFiles: { [key: string]: Buffer };
+
+  try {
+    pkgFiles = await docker.extract(pkgFilesNames);
+  } catch (err) {
+    debug(err);
+    throw new Error(err);
+  }
+
   const results = await Promise.all([
-    apkAnalyzer.analyze(targetImage, options),
-    aptAnalyzer.analyze(targetImage, options),
+    apkAnalyzer.analyze(targetImage, options, pkgFiles),
+    aptAnalyzer.analyze(targetImage, options, pkgFiles),
     rpmAnalyzer.analyze(targetImage, options),
   ]).catch((err) => {
     debug(`Error while running analyzer: '${err.stderr}'`);

@@ -19,9 +19,15 @@
     "prepare": "npm run build"
   },
   "dependencies": {
+    "@types/steam": "0.0.27",
+    "@types/tar-stream": "^1.6.0",
+    "@types/tmp": "^0.1.0",
     "debug": "^4.1.1",
     "dockerfile-ast": "0.0.16",
     "semver": "^6.1.0",
+    "steam": "^1.4.1",
+    "tar-stream": "^2.0.1",
+    "tmp": "^0.1.0",
     "tslib": "^1"
   },
   "devDependencies": {

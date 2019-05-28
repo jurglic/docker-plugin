@@ -1,19 +1,30 @@
 import { Docker, DockerOptions } from "../docker";
+import { DEFAULT_ENCODING } from "./image-extractor";
 import { AnalyzerPkg } from "./types";
 export { analyze };
 
-function analyze(targetImage: string, options?: DockerOptions) {
-  return getPackages(targetImage, options).then((pkgs) => ({
+const APK_DB_INSTALLED = "/lib/apk/db/installed";
+
+const APK_PKGFILES = [APK_DB_INSTALLED];
+
+export { APK_PKGFILES };
+
+async function analyze(
+  targetImage: string,
+  options?: DockerOptions,
+  files?: { [key: string]: Buffer },
+) {
+  // TODO: remove when done, backwards compatibility
+  if (!files) {
+    files = await new Docker(targetImage, options).extract(APK_PKGFILES);
+  }
+  const dbFile = files[APK_DB_INSTALLED];
+  const pkgs = parseFile(dbFile ? dbFile.toString(DEFAULT_ENCODING) : "");
+  return {
     Image: targetImage,
     AnalyzeType: "Apk",
     Analysis: pkgs,
-  }));
-}
-
-function getPackages(targetImage: string, options?: DockerOptions) {
-  return new Docker(targetImage, options)
-    .catSafe("/lib/apk/db/installed")
-    .then((output) => parseFile(output.stdout));
+  };
 }
 
 function parseFile(text: string) {

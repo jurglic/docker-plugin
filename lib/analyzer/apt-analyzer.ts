@@ -1,16 +1,34 @@
 import { Docker, DockerOptions } from "../docker";
+import { DEFAULT_ENCODING } from "./image-extractor";
 import { AnalyzerPkg } from "./types";
 
 export { analyze };
 
-async function analyze(targetImage: string, options?: DockerOptions) {
-  const docker = new Docker(targetImage, options);
-  const dpkgFile = (await docker.catSafe("/var/lib/dpkg/status")).stdout;
-  const pkgs = parseDpkgFile(dpkgFile);
+const APT_DPKG_STATUS = "/var/lib/dpkg/status";
+const APT_EXT_STATES = "/var/lib/apt/extended_states";
 
-  const extFile = (await docker.catSafe("/var/lib/apt/extended_states")).stdout;
+const APT_PKGFILES = [APT_DPKG_STATUS, APT_EXT_STATES];
+
+export { APT_PKGFILES };
+
+async function analyze(
+  targetImage: string,
+  options?: DockerOptions,
+  files?: { [key: string]: Buffer },
+) {
+  // TODO: remove when done, backwards compatibility
+  if (!files) {
+    files = await new Docker(targetImage, options).extract(APT_PKGFILES);
+  }
+
+  const dpkgFile = files[APT_DPKG_STATUS];
+  const pkgs = parseDpkgFile(
+    dpkgFile ? dpkgFile.toString(DEFAULT_ENCODING) : "",
+  );
+
+  const extFile = parseDpkgFile[APT_EXT_STATES];
   if (extFile) {
-    setAutoInstalledPackages(extFile, pkgs);
+    setAutoInstalledPackages(extFile.toString(DEFAULT_ENCODING), pkgs);
   }
 
   return {
